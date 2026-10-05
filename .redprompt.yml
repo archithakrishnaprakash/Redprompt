@@ -1,0 +1,61 @@
+# RedPrompt configuration (example).
+# Copy to your project root as `.redprompt.yml`. Values here are safe defaults.
+# Environment variables prefixed with REDPROMPT_ override these (e.g. REDPROMPT_DATABASE_URL).
+
+# Where RedPrompt stores its state.
+database_url: "sqlite:///redprompt.db"
+
+# Global engagement safety controls. RedPrompt is for AUTHORIZED testing only.
+safety:
+  # When true, RedPrompt refuses to scan any target not explicitly marked authorized.
+  require_authorization: true
+  # Only allow targets whose host resolves to these networks. Empty list = lab loopback only.
+  allowed_hosts:
+    - "127.0.0.1"
+    - "localhost"
+    - "::1"
+  # Block obviously public / third-party targets unless explicitly allow-listed above.
+  block_public_targets: true
+  # Global default: run in dry-run (build the plan, do not send test traffic).
+  default_dry_run: false
+
+target:
+  timeout_seconds: 30
+  connect_timeout_seconds: 10
+
+scan:
+  categories:
+    - prompt
+    - data
+    - rag
+    - agent
+    - api
+  workers: 4                 # concurrency limit
+  max_requests_per_target: 500
+  rate_limit_per_second: 5.0
+  retry:
+    attempts: 3
+    backoff_seconds: 0.5
+
+risk:
+  methodology: default
+  minimum_confidence: 0.70   # findings below this confidence are reported as informational
+  impact_weight: true
+  exploitability_weight: true
+  confidence_weight: true
+
+security:
+  redact_secrets: true       # redact secrets/PII in stored evidence and logs
+  evidence_retention_days: 90
+  store_raw_traffic: false    # never persist raw model traffic unless explicitly enabled
+
+output:
+  formats:
+    - json
+    - sarif
+    - html
+  directory: "reports"
+
+logging:
+  level: "INFO"
+  json: false                # true => structured JSON logs

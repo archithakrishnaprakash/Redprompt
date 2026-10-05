@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ report.tool_name }} Assessment — {{ report.target.name }}</title>
+<style>
+  :root{
+    --bg:#0f1419; --panel:#1a2029; --ink:#e6edf3; --muted:#8b949e; --line:#2d333b;
+    --critical:#e5484d; --high:#f0883e; --medium:#e3b341; --low:#3fb950; --info:#6e7681; --accent:#58a6ff;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  .wrap{max-width:960px;margin:0 auto;padding:32px 20px 64px}
+  header.title{border-bottom:1px solid var(--line);padding-bottom:20px;margin-bottom:24px}
+  header.title h1{margin:0 0 6px;font-size:26px}
+  header.title .sub{color:var(--muted)}
+  .notice{background:#3d2b1a;border:1px solid #f0883e55;color:#f5c98b;padding:10px 14px;border-radius:8px;margin:16px 0;font-size:13px}
+  h2{font-size:18px;margin:32px 0 12px;border-left:3px solid var(--accent);padding-left:10px}
+  .grid{display:flex;gap:12px;flex-wrap:wrap;margin:16px 0}
+  .stat{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 18px;min-width:110px;text-align:center;flex:1}
+  .stat .n{font-size:26px;font-weight:700}
+  .stat .l{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+  .badge{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:#0b0f14}
+  .b-critical{background:var(--critical);color:#fff} .b-high{background:var(--high)} .b-medium{background:var(--medium)}
+  .b-low{background:var(--low)} .b-info{background:var(--info);color:#fff}
+  table{width:100%;border-collapse:collapse;margin:12px 0;font-size:14px}
+  th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--muted);font-weight:600;font-size:12px;text-transform:uppercase}
+  .finding{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px;margin:14px 0}
+  .finding h3{margin:0 0 4px;font-size:16px}
+  .finding .meta{color:var(--muted);font-size:13px;margin-bottom:10px}
+  .finding .lbl{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.03em;margin-top:10px}
+  .flags{color:var(--muted);font-size:11px}
+  code,.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px}
+  ul{margin:6px 0 6px 18px;padding:0}
+  a{color:var(--accent)}
+  footer{margin-top:40px;border-top:1px solid var(--line);padding-top:16px;color:var(--muted);font-size:12px}
+  .risk-explain{background:#12181f;border:1px solid var(--line);border-radius:8px;padding:8px 12px;font-size:13px;color:#c9d1d9}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="title">
+    <h1>{{ report.tool_name }} — AI Application Security Assessment</h1>
+    <div class="sub">Target: <b>{{ report.target.name }}</b> · {{ report.target.app_type }} · {{ report.target.environment }} · generated {{ report.generated_at }}</div>
+  </header>
+
+  <div class="notice">Authorized assessment. Testing was performed against a target the operator confirmed permission to test. Heuristic detections are labelled; findings are evidence-backed and may include false positives.</div>
+
+  <h2>Executive summary</h2>
+  {% set c = report.severity_counts() %}
+  <div class="grid">
+    <div class="stat"><div class="n">{{ report.scan.total_tests }}</div><div class="l">Tests</div></div>
+    <div class="stat"><div class="n">{{ report.findings|length }}</div><div class="l">Findings</div></div>
+    <div class="stat"><div class="n" style="color:var(--critical)">{{ c.critical }}</div><div class="l">Critical</div></div>
+    <div class="stat"><div class="n" style="color:var(--high)">{{ c.high }}</div><div class="l">High</div></div>
+    <div class="stat"><div class="n" style="color:var(--medium)">{{ c.medium }}</div><div class="l">Medium</div></div>
+    <div class="stat"><div class="n" style="color:var(--low)">{{ c.low }}</div><div class="l">Low</div></div>
+    <div class="stat"><div class="n" style="color:var(--info)">{{ c.info }}</div><div class="l">Info</div></div>
+  </div>
+
+  <h2>Assessment scope &amp; target</h2>
+  <table>
+    <tr><th>Name</th><td>{{ report.target.name }}</td><th>Type</th><td>{{ report.target.app_type }}</td></tr>
+    <tr><th>Base URL</th><td class="mono">{{ report.target.base_url }}</td><th>Provider</th><td>{{ report.target.provider }}</td></tr>
+    <tr><th>RAG</th><td>{{ report.target.rag_enabled }}</td><th>Agent</th><td>{{ report.target.agent_enabled }}</td></tr>
+    <tr><th>Scan</th><td class="mono">{{ report.scan.scan_uuid }}</td><th>Status</th><td>{{ report.scan.status }}</td></tr>
+  </table>
+
+  <h2>Methodology</h2>
+  <p>RedPrompt executed a plan of security-test plugins spanning prompt, data, RAG, agent, and API categories, mapped to the OWASP Top 10 for LLM Applications. Each response was analysed by layered detectors; a refusal is treated as secure behaviour. Findings carry an explainable risk score (impact × exploitability × exposure × confidence) and hash-verified evidence.</p>
+
+  <h2>Findings</h2>
+  {% if report.findings %}
+    {% for f in report.findings_sorted() %}
+    <div class="finding">
+      <h3>{{ f.finding_id }} — {{ f.title }} <span class="badge b-{{ f.severity }}">{{ f.severity }}</span></h3>
+      <div class="meta">
+        Risk {{ f.risk_score }}/10 · confidence {{ (f.confidence*100)|round|int }}% · status {{ f.status }} · test {{ f.test_id }}
+        <span class="flags">{% if f.heuristic %}[heuristic]{% endif %}{% if f.experimental %}[experimental]{% endif %}</span>
+      </div>
+      {% if f.description %}<div>{{ f.description }}</div>{% endif %}
+      <div class="lbl">Risk rationale</div>
+      <div class="risk-explain">{{ f.risk_explanation }}</div>
+      {% if f.impact %}<div class="lbl">Impact</div><div>{{ f.impact }}</div>{% endif %}
+      {% if f.reproduction_steps %}<div class="lbl">Reproduction</div><ul>{% for s in f.reproduction_steps %}<li class="mono">{{ s }}</li>{% endfor %}</ul>{% endif %}
+      {% if f.remediation %}<div class="lbl">Remediation</div><div>{{ f.remediation }}</div>{% endif %}
+      {% if f.references %}<div class="lbl">References</div><ul>{% for r in f.references %}<li><a href="{{ r }}">{{ r }}</a></li>{% endfor %}</ul>{% endif %}
+      <div class="meta" style="margin-top:8px">Evidence records: {{ f.evidence_count }}</div>
+    </div>
+    {% endfor %}
+  {% else %}
+    <p>No findings were identified in this scan.</p>
+  {% endif %}
+
+  {% if report.regression %}
+  <h2>Security regression</h2>
+  <p>Verdict: <b>{{ report.regression.verdict }}</b>
+     (resolved {{ report.regression.resolved|length }}, new {{ report.regression.new|length }}, unchanged {{ report.regression.unchanged|length }})</p>
+  {% endif %}
+
+  <h2>Test coverage (appendix)</h2>
+  <table>
+    <tr><th>Executed</th><td>{{ report.scan.total_tests }}</td><th>Passed</th><td>{{ report.scan.passed }}</td></tr>
+    <tr><th>Failed</th><td>{{ report.scan.failed }}</td><th>Inconclusive</th><td>{{ report.scan.inconclusive }}</td></tr>
+    <tr><th>Errored</th><td>{{ report.scan.errored }}</td><th>Skipped</th><td>{{ report.scan.skipped }}</td></tr>
+  </table>
+
+  <footer>
+    Generated by {{ report.tool_name }} {{ report.tool_version }}. Limitations: detections are heuristic and evidence-based; absence of findings is not proof of security. For authorized testing only.
+  </footer>
+</div>
+</body>
+</html>

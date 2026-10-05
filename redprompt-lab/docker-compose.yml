@@ -1,0 +1,38 @@
+# RedPrompt vulnerable lab. INSECURE BY DESIGN — never expose to untrusted networks.
+# Ports are bound to 127.0.0.1 on the host so the lab is loopback-only.
+#
+#   docker compose -f redprompt-lab/docker-compose.yml up --build
+#
+name: redprompt-lab
+
+x-lab: &lab
+  build:
+    context: ..
+    dockerfile: redprompt-lab/Dockerfile
+  restart: unless-stopped
+
+services:
+  chatbot:
+    <<: *lab
+    environment: {LAB_APP: chatbot, LAB_PORT: 8001}
+    ports: ["127.0.0.1:8001:8001"]
+
+  rag:
+    <<: *lab
+    environment: {LAB_APP: rag, LAB_PORT: 8002}
+    ports: ["127.0.0.1:8002:8002"]
+
+  agent:
+    <<: *lab
+    environment: {LAB_APP: agent, LAB_PORT: 8003}
+    ports: ["127.0.0.1:8003:8003"]
+
+  docagent:
+    <<: *lab
+    environment: {LAB_APP: docagent, LAB_PORT: 8004}
+    ports: ["127.0.0.1:8004:8004"]
+
+  api:
+    <<: *lab
+    environment: {LAB_APP: api, LAB_PORT: 8005}
+    ports: ["127.0.0.1:8005:8005"]

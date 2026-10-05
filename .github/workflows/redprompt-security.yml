@@ -1,0 +1,59 @@
+name: RedPrompt AI Security
+
+# Demonstrates using RedPrompt as an AI-security gate in CI against the local
+# vulnerable lab (no third-party systems are touched).
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write   # required to upload SARIF to code scanning
+
+jobs:
+  ai-security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install RedPrompt + lab
+        run: pip install -e ".[lab]"
+
+      - name: Start a vulnerable lab target (background)
+        run: |
+          nohup python -m redprompt.lab.server --app agent --port 8003 >lab.log 2>&1 &
+          for i in $(seq 1 20); do
+            curl -sf -X POST http://127.0.0.1:8003/chat -H 'content-type: application/json' \
+              -d '{"message":"ping"}' && break || sleep 0.5
+          done
+
+      - name: Register authorized target
+        run: |
+          redprompt target add --name ci-agent --url http://127.0.0.1:8003 \
+            --type agent --endpoint /chat --agent --authorized
+
+      - name: Scan
+        run: redprompt scan ci-agent
+
+      - name: Generate SARIF + HTML report
+        run: redprompt report ci-agent --format sarif --format html --out reports
+
+      - name: Upload SARIF to code scanning
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: reports
+
+      - name: Upload HTML report artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: redprompt-report
+          path: reports/*.html
+
+      - name: Security gate (fail on high or above)
+        run: redprompt gate ci-agent --fail-on high
